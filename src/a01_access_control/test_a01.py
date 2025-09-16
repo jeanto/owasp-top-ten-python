@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Importa os servidores
-from server import app as vulnerable_app
-from solution import create_secure_app
+from .server import app as vulnerable_app
+from .solution import create_secure_app
 
 # Configurações de teste
 JWT_SECRET = os.getenv("JWT_SECRET", "test-secret")
@@ -50,63 +50,43 @@ class TestA01AccessControl:
 
     @patch('auth.db.execute_query')
     def test_vulnerable_unauthorized_access_should_fail(self, mock_db):
-        """
-        Testa se o endpoint vulnerável rejeita acessos sem autenticação
-        """
+        print("\n > Testa se o endpoint vulnerável rejeita acessos sem autenticação | Esperado: 403 Forbidden")
         response = self.vulnerable_client.get("/profile?username=alice")
         assert response.status_code == 403  # FastAPI retorna 403 para missing bearer token
 
     @patch('auth.db.execute_query')  
     def test_vulnerable_allows_cross_user_access(self, mock_db):
-        """
-        DEMONSTRA A VULNERABILIDADE: Usuário autenticado como Alice
-        consegue acessar dados do Bob mudando apenas o parâmetro username
-        """
+        print("\n > Demonstra a vulnerabilidade: Alice autenticada acessa dados do Bob mudando apenas o parâmetro username | Esperado: 200 OK e dados do Bob")
         mock_db.side_effect = lambda query, params: mock_db_query(params[0])
-        
-        # Alice (autenticada) tenta acessar dados do Bob
         response = self.vulnerable_client.get(
             "/profile?username=bob", 
             headers=self.alice_headers
         )
-        
-        # VULNERABILIDADE: Request é bem-sucedida
         assert response.status_code == 200
         data = response.json()
-        assert data["username"] == "bob"  # Alice conseguiu acessar dados do Bob!
+        assert data["username"] == "bob"
         assert data["id"] == 2
 
     @patch('auth.db.execute_query')
     def test_secure_blocks_cross_user_access(self, mock_db):
-        """
-        DEMONSTRA A CORREÇÃO: Versão segura bloqueia acesso cross-user
-        """
+        print("\n > Demonstra a correção: versão segura bloqueia acesso cross-user (Alice não acessa dados do Bob) | Esperado: 403 Forbidden e mensagem 'Access denied'")
         mock_db.side_effect = lambda query, params: mock_db_query(params[0])
-        
-        # Alice (autenticada) tenta acessar dados do Bob na versão segura
         response = self.secure_client.get(
             "/profile?username=bob",
             headers=self.alice_headers
         )
-        
-        # CORREÇÃO: Request é rejeitada com 403 Forbidden
         assert response.status_code == 403
         data = response.json()
         assert "Access denied" in data["detail"]
 
     @patch('auth.db.execute_query')
     def test_secure_allows_own_data_access(self, mock_db):
-        """
-        Testa se a versão segura permite acesso aos próprios dados
-        """
+        print("\n > Testa se a versão segura permite acesso aos próprios dados | Esperado: 200 OK e dados da Alice")
         mock_db.side_effect = lambda query, params: mock_db_query(params[0])
-        
-        # Alice acessa seus próprios dados
         response = self.secure_client.get(
             "/profile?username=alice",
             headers=self.alice_headers
         )
-        
         assert response.status_code == 200
         data = response.json()
         assert data["username"] == "alice"
@@ -114,48 +94,34 @@ class TestA01AccessControl:
 
     @patch('auth.db.execute_query')
     def test_vulnerable_user_not_found(self, mock_db):
-        """
-        Testa comportamento quando usuário não existe (versão vulnerável)
-        """
-        mock_db.return_value = []  # Simula usuário não encontrado
-        
+        print("\n > Testa comportamento quando usuário não existe (versão vulnerável) | Esperado: 404 Not Found e mensagem 'User not found'")
+        mock_db.return_value = []
         response = self.vulnerable_client.get(
             "/profile?username=nonexistent",
             headers=self.alice_headers
         )
-        
         assert response.status_code == 404
         assert "User not found" in response.json()["detail"]
 
     @patch('auth.db.execute_query')
     def test_secure_user_not_found(self, mock_db):
-        """
-        Testa comportamento quando usuário não existe (versão segura)
-        """
-        mock_db.return_value = []  # Simula usuário não encontrado
-        
+        print("\n > Testa comportamento quando usuário não existe (versão segura) | Esperado: 404 Not Found e mensagem 'User not found'")
+        mock_db.return_value = []
         response = self.secure_client.get(
             "/profile?username=alice",
             headers=self.alice_headers
         )
-        
         assert response.status_code == 404
         assert "User not found" in response.json()["detail"]
 
     def test_invalid_token_rejected(self):
-        """
-        Testa se tokens inválidos são rejeitados
-        """
+        print("\n > Testa se tokens inválidos são rejeitados (vulnerável e seguro) | Esperado: 401 Unauthorized")
         invalid_headers = {"Authorization": "Bearer invalid-token"}
-        
-        # Testa na versão vulnerável
         response = self.vulnerable_client.get(
             "/profile?username=alice",
             headers=invalid_headers
         )
         assert response.status_code == 401
-        
-        # Testa na versão segura
         response = self.secure_client.get(
             "/profile?username=alice", 
             headers=invalid_headers

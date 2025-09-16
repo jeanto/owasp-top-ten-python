@@ -1,5 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer
+from fastapi.responses import FileResponse, HTMLResponse
+import sys
+import os
+from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi.security import HTTPBearer
 import sys
 import os
 
@@ -9,6 +14,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'shared'))
 from auth import build_server, get_current_user, db, User
 
 app = build_server()
+
+# Rota para servir index.html como página principal
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    index_path = os.path.join(os.path.dirname(__file__), "index.html")
+    return FileResponse(index_path, media_type="text/html")
 
 @app.get("/profile", response_model=User)
 async def get_profile(

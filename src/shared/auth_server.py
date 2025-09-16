@@ -17,14 +17,63 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import re
 
 load_dotenv()
 
-# Configurações
-JWT_SECRET = os.getenv("JWT_SECRET", "your-super-secret-jwt-key")
+JWT_SECRET = os.getenv("JWT_SECRET", "your-super-secret-jwt-key-change-this-in-production")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+def parse_database_url(db_url):
+    """
+    Extrai usuário, senha, host, porta e nome do banco de uma DATABASE_URL padrão.
+    Exemplo: postgresql://user:password@localhost:5432/owasp_top10_db
+    """
+    regex = r"postgresql://([^:]+):([^@]+)@([^:/]+):(\d+)/(\w+)"
+    match = re.match(regex, db_url)
+    if not match:
+        raise ValueError("DATABASE_URL inválida")
+    return {
+        "user": match.group(1),
+        "password": match.group(2),
+        "host": match.group(3),
+        "port": match.group(4),
+        "dbname": match.group(5)
+    }
+
+def check_postgres_user_and_db():
+    """
+    Verifica se o usuário e banco de dados do .env existem no PostgreSQL.
+    Se não existirem, exibe instruções para criação manual.
+    """
+    try:
+        db_info = parse_database_url(DATABASE_URL)
+        # Tenta conectar usando o usuário do .env
+        conn_params = {
+            "user": db_info["user"],
+            "password": db_info["password"],
+            "host": db_info["host"],
+            "port": db_info["port"],
+            "dbname": db_info["dbname"]
+        }
+        try:
+            conn = psycopg2.connect(**conn_params)
+            conn.close()
+            print(f"✅ Usuário '{db_info['user']}' e banco '{db_info['dbname']}' existem e estão acessíveis.")
+        except psycopg2.OperationalError as e:
+            print(f"❌ Não foi possível conectar com o usuário/banco do .env.")
+            print(f"Erro: {e}")
+            print("\nPara criar manualmente:")
+            print(f"1. Acesse o psql como superusuário (ex: postgres)")
+            print(f"2. Execute:")
+            print(f"   CREATE USER \"{db_info['user']}\" WITH PASSWORD '{db_info['password']}';")
+            print(f"   CREATE DATABASE \"{db_info['dbname']}\" OWNER \"{db_info['user']}\";")
+            print(f"   GRANT ALL PRIVILEGES ON DATABASE \"{db_info['dbname']}\" TO \"{db_info['user']}\";")
+            print("Depois, tente rodar novamente o servidor.")
+    except Exception as e:
+        print(f"Erro ao verificar usuário/banco: {e}")
 
 security = HTTPBearer()
 
@@ -186,7 +235,7 @@ def build_auth_server():
     """Cria servidor FastAPI com endpoints de autenticação"""
     app = FastAPI(
         title="OWASP Authentication Server",
-        description="Servidor de autenticação para o workshop OWASP"
+        description="Servidor de autenticação para o OWASP TOP 10 DB"
     )
     
     @app.post("/login", response_model=LoginResponse)
@@ -258,10 +307,14 @@ def build_auth_server():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
+    # Verifica usuário e banco de dados do .env
+    print("\n🔧 Verificando usuário e banco de dados do .env...")
+    check_postgres_user_and_db()
+
     # Cria usuários de teste automaticamente
     create_test_users()
-    
+
     # Inicia servidor de autenticação
     app = build_auth_server()
     print("\n🚀 Servidor de autenticação iniciado em http://localhost:8000")
@@ -271,5 +324,5 @@ if __name__ == "__main__":
     print("\n💡 Para obter token:")
     print("   POST http://localhost:8000/login")
     print("   Body: {\"username\": \"alice\", \"password\": \"alice123\"}")
-    
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

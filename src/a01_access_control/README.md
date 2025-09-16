@@ -27,19 +27,28 @@ Authorization: Bearer ALICE_JWT_TOKEN
 1. PostgreSQL rodando
 2. Dependências instaladas: `pip install -r ../../requirements.txt`
 3. Arquivo `.env` configurado (copie de `.env.example`)
+4. **Crie manualmente o usuário e o banco de dados informados em `.env` no PostgreSQL:**
+   - Exemplo de comandos (no psql como superusuário):
+     ```sql
+     CREATE USER "user" WITH PASSWORD 'password';
+     CREATE DATABASE "owasp_top10_db" OWNER "user";
+     GRANT ALL PRIVILEGES ON DATABASE "owasp_top10_db" TO "user";
+     ```
+   - Substitua pelos valores reais do seu `.env`.
 
 ### Passo a Passo
 
-#### 1. Configure o banco de dados
-```bash
-# Na raiz do projeto
-python auth_helper.py setup
-```
-
-#### 2. Inicie o servidor de autenticação
+#### 1. Inicie o servidor de autenticação
 ```bash
 # Terminal 1
 python src/shared/auth_server.py
+```
+
+#### 2. Configure o banco de dados
+```bash
+# Terminal 2
+# Na raiz do projeto
+python auth_helper.py setup
 ```
 
 #### 3. Inicie o servidor vulnerável
@@ -133,7 +142,7 @@ Isso irá:
 Execute os testes unitários:
 ```bash
 cd src/a01_access_control
-pytest test_a01.py -v
+pytest test_a01.py -v -s
 ```
 
 ### Testes Incluídos
