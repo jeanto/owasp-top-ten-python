@@ -1,6 +1,9 @@
-# OWASP Top 10 Workshop - Python Edition
+# OWASP Top 10 - Python Edition
 
-Workshop prático para demonstrar as principais vulnerabilidades de segurança em aplicações web segundo o OWASP Top 10, implementado em Python com FastAPI.
+Repositório prático e didático para demonstrar as principais vulnerabilidades de segurança em aplicações web segundo o OWASP Top 10, implementado em Python com FastAPI.
+
+> **Este projeto é uma adaptação em Python, baseada no repositório original [owasp-top-ten-workshop](https://github.com/nearform/owasp-top-ten-workshop.git) criado por NearForm, licenciado sob [CC-BY-SA-4.0](https://creativecommons.org/licenses/by-sa/4.0/). Todas as modificações e novas implementações feitas aqui também estão licenciadas sob CC-BY-SA-4.0. Se reutilizar este projeto, mantenha esta licença e referência ao criador original.**
+
 
 ## Estrutura do Projeto
 
