@@ -36,7 +36,7 @@ def create_secure_app():
         if username != authenticated_username:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: You can only access your own profile"
+                detail="Acesso negado: Você só pode acessar o seu próprio perfil"
             )
         
         # CORREÇÃO 2: Usa o username do usuário autenticado, não do parâmetro da query
@@ -59,12 +59,12 @@ def create_secure_app():
     @app.get("/")
     async def root():
         return {
-            "message": "OWASP A01 - Access Control SECURE Implementation",
-            "security": "Users can only access their own profile data",
-            "improvements": [
-                "Validates user authorization before data access",
-                "Returns 403 Forbidden for unauthorized access attempts",
-                "Uses authenticated user data instead of query parameters"
+            "mensagem": "OWASP A01 - Implementação SEGURA de Controle de Acesso",
+            "seguranca": "Usuários só podem acessar os próprios dados de perfil",
+            "melhorias": [
+                "Valida autorização do usuário antes de acessar dados",
+                "Retorna 403 Forbidden para tentativas de acesso não autorizadas",
+                "Utiliza dados do usuário autenticado ao invés de parâmetros da query"
             ]
         }
     

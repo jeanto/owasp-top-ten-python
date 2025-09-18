@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OWASP Top 10 - A02: Cryptographic Failure</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Roboto', Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 0; }
+    .container { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px; }
+    h1, h2, h3 { color: #2d3e50; }
+    h1 { margin-top: 0; }
+    code, pre { background: #f0f0f0; border-radius: 4px; padding: 2px 6px; font-size: 1em; }
+    pre { padding: 12px; overflow-x: auto; }
+    .owasp-box { background: #e3f2fd; border-left: 5px solid #1976d2; padding: 16px; margin-bottom: 24px; }
+    .tutorial-step { margin-bottom: 18px; }
+    .tip { background: #fffde7; border-left: 5px solid #ffd600; padding: 12px; margin: 18px 0; }
+    ul { margin-top: 0; }
+    @media (max-width: 600px) { .container { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>OWASP Top 10 - A02: Cryptographic Failure</h1>
+    <div class="owasp-box">
+      <h2>O que é Cryptographic Failure?</h2>
+      <p><strong>Cryptographic Failure</strong> (anteriormente "Sensitive Data Exposure") é uma vulnerabilidade listada pelo <a href="https://owasp.org/Top10/A02_2021-Cryptographic_Failures/" target="_blank">OWASP Top 10</a>. Ela ocorre quando dados sensíveis não são protegidos adequadamente por mecanismos criptográficos, ou quando algoritmos fracos são utilizados.</p>
+      <ul>
+        <li>Senhas armazenadas em texto puro ou com hash fraco (ex: MD5).</li>
+        <li>Dados confidenciais transmitidos sem criptografia adequada.</li>
+        <li>Uso incorreto de algoritmos, chaves ou protocolos.</li>
+      </ul>
+      <p><strong>Impacto:</strong> Vazamento de credenciais, exposição de dados pessoais, ataques de força bruta e comprometimento de sistemas.</p>
+    </div>
+
+    <h2>Laboratório Prático</h2>
+    <p>Neste laboratório, você irá explorar e corrigir falhas de criptografia em uma API Python, testando armazenamento inseguro de senhas e a correção com bcrypt.</p>
+
+    <h3>Passo a Passo</h3>
+    <div class="tutorial-step">
+      <strong>1. Pré-requisitos</strong>
+      <ul>
+        <li>PostgreSQL rodando</li>
+        <li>Dependências instaladas: <code>pip install -r ../../requirements.txt</code></li>
+        <li>Arquivo <code>.env</code> configurado</li>
+        <li>Usuário e banco de dados criados conforme <code>.env</code>:</li>
+      </ul>
+      <pre><code>CREATE USER "user" WITH PASSWORD 'password';
+CREATE DATABASE "owasp_top10_db" OWNER "user";
+GRANT ALL PRIVILEGES ON DATABASE "owasp_top10_db" TO "user";
+</code></pre>
+    </div>
+    <div class="tutorial-step">
+      <strong>2. Inicie os servidores</strong>
+      <ul>
+        <li>Servidor vulnerável: <code>python server.py</code></li>
+        <li>Servidor seguro (opcional): <code>python solution.py</code></li>
+      </ul>
+    </div>
+    <div class="tutorial-step">
+      <strong>3. Teste a vulnerabilidade</strong>
+      <ul>
+        <li>Altere a senha de um usuário (MD5):</li>
+      </ul>
+      <pre><code>curl -X POST http://localhost:8003/change-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN_AQUI" \
+  -d '{"new_password": "nova_senha"}'
+</code></pre>
+      <ul>
+        <li>Visualize todos os usuários e hashes:</li>
+      </ul>
+      <pre><code>curl http://localhost:8003/all-data
+</code></pre>
+      <ul>
+        <li>Explore senhas fracas:</li>
+      </ul>
+      <pre><code>curl -X POST http://localhost:8003/exploit-passwords \
+  -H "Content-Type: application/json" \
+  -d '{"password": "alice123"}'
+</code></pre>
+      <div class="tip">
+        <strong>Dica:</strong> Substitua <code>SEU_TOKEN_AQUI</code> pelo token JWT obtido no login.
+      </div>
+    </div>
+    <div class="tutorial-step">
+      <strong>4. Teste a correção</strong>
+      <ul>
+        <li>Altere a senha usando bcrypt no servidor seguro:</li>
+      </ul>
+      <pre><code>curl -X POST http://localhost:8004/change-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN_AQUI" \
+  -d '{"new_password": "nova_senha_segura"}'
+</code></pre>
+      <p>O hash bcrypt será armazenado corretamente e não poderá ser revertido facilmente.</p>
+    </div>
+
+    <h3>Usuários de Teste</h3>
+    <ul>
+      <li><strong>alice</strong> / senha: <code>alice123</code></li>
+      <li><strong>bob</strong> / senha: <code>bob123</code></li>
+    </ul>
+
+    <h3>Principais Lições</h3>
+    <ul>
+      <li>Nunca armazene senhas em texto puro ou com hash fraco</li>
+      <li>Use algoritmos modernos como bcrypt</li>
+      <li>Sempre aplique salt nas senhas</li>
+      <li>Teste suas implementações de segurança</li>
+      <li>Proteja endpoints de alteração e recuperação de senha</li>
+    </ul>
+
+    <h3>Links Úteis</h3>
+    <ul>
+      <li><a href="https://owasp.org/Top10/A02_2021-Cryptographic_Failures/" target="_blank">OWASP Top 10 - Cryptographic Failure</a></li>
+      <li><a href="https://fastapi.tiangolo.com/" target="_blank">FastAPI Documentation</a></li>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html" target="_blank">OWASP Password Storage Cheat Sheet</a></li>
+    </ul>
+  </div>
+</body>
+</html>

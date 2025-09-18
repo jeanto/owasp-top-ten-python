@@ -234,7 +234,7 @@ def create_test_users():
 def build_auth_server():
     """Cria servidor FastAPI com endpoints de autenticação"""
     app = FastAPI(
-        title="OWASP Authentication Server",
+        title="Servidor de autenticação para o OWASP TOP 10",
         description="Servidor de autenticação para o OWASP TOP 10 DB"
     )
     
@@ -291,13 +291,13 @@ def build_auth_server():
     @app.get("/")
     async def root():
         return {
-            "message": "OWASP Authentication Server",
+            "mensagem": "Servidor de autenticação para o OWASP TOP 10",
             "endpoints": {
-                "/login": "POST - Login with username/password",
-                "/me": "GET - Get current user info (requires auth)",
-                "/setup": "POST - Create test users alice and bob"
+                "/login": "POST - Login com nome de usuário/senha",
+                "/me": "GET - Obter informações do usuário atual (requer autenticação)",
+                "/setup": "POST - Criar usuários de teste alice e bob"
             },
-            "test_users": {
+            "testa_usuarios": {
                 "alice": "password: alice123",
                 "bob": "password: bob123"
             }

@@ -55,10 +55,10 @@ async def get_profile(
 @app.get("/")
 async def root():
     return {
-        "message": "OWASP A01 - Access Control Vulnerability Demo",
-        "vulnerability": "Users can access other users' profiles by changing the username parameter",
+        "mensagem": "OWASP A01 - Demonstração de Vulnerabilidade de Controle de Acesso",
+        "vulnerabilidade": "Usuários podem acessar perfis de outros usuários alterando o parâmetro username",
         "endpoints": {
-            "/profile": "GET - Requires authentication, vulnerable to access control bypass"
+            "/profile": "GET - Requer autenticação, vulnerável a bypass de controle de acesso"
         }
     }
 

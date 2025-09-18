@@ -1,6 +1,6 @@
 # A01 - Broken Access Control
 
-Este módulo demonstra vulnerabilidades de controle de acesso onde usuários autenticados podem acessar dados de outros usuários.
+Este laboratório demonstra vulnerabilidades de controle de acesso onde usuários autenticados podem acessar dados de outros usuários.
 
 ## 🚨 A Vulnerabilidade
 
