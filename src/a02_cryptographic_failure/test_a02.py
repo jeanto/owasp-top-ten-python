@@ -1,21 +1,35 @@
 import pytest
 from fastapi.testclient import TestClient
-from .server import app as vulnerable_app
-from .solution import app as secure_app
 import sys
 import os
 
 # Adiciona o diretório shared ao path para importar módulos compartilhados
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'shared'))
+sys.path.append(os.path.join(os.path.dirname(__file__), 'utils'))
+sys.path.append(os.path.dirname(__file__))
 
 from auth import db
-from .utils.crypto import hash_md5, hash_bcrypt, verify_bcrypt
+from crypto import hash_md5, hash_bcrypt, verify_bcrypt
+from server import app as vulnerable_app
+from solution import app as secure_app
+
+# ...resto do código permanece igual...
 
 @pytest.fixture(autouse=True)
 def setup_users():
     # Reseta senhas dos usuários para valores conhecidos
-    db.execute_update("UPDATE users SET password = %s WHERE username = %s", (hash_md5("alice123"), "alice"))
-    db.execute_update("UPDATE users SET password = %s WHERE username = %s", (hash_md5("bob123"), "bob"))
+    users = [("alice", "alice123"), ("bob", "bob123")]
+    conn = db.get_connection()
+    try:
+        with conn.cursor() as cursor:
+            for username, password in users:
+                password_hash = hash_md5(password)
+                query = "UPDATE users SET password = %s WHERE username = %s"
+                cursor.execute(query, (password_hash, username))
+            conn.commit()
+    finally:
+        conn.close()
+
 
 class TestCryptographicFailure:
     def test_exploit_md5_to_plaintext(self):
@@ -48,6 +62,7 @@ class TestCryptographicFailure:
     def test_vulnerable_change_password_md5(self):
         client = TestClient(vulnerable_app)
         token = "test-token"  # Use um token válido em ambiente real
+
         response = client.post(
             "/change-password",
             json={"new_password": "newpass"},
@@ -59,7 +74,7 @@ class TestCryptographicFailure:
         client = TestClient(secure_app)
         token = "test-token"  # Use um token válido em ambiente real
         response = client.post(
-            "/change-password",
+            "/change-password-secure",
             json={"new_password": "newpass"},
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -81,3 +96,12 @@ class TestCryptographicFailure:
             json={"password": "alice123"}
         )
         assert response.status_code == 404 or response.status_code == 405
+
+    def test_secure_password_storage(self):
+        # Verifica se a senha foi armazenada com bcrypt
+        client = TestClient(secure_app)
+        response = client.get("/all-data")
+        assert response.status_code == 200
+        users = response.json().get("users", [])      
+        for user in users:
+            assert verify_bcrypt("alice123", user["password"])

@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared')))
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-from routes.change_password_solution import router as change_password_router
+from routes.change_password_secure import router as change_password_router
 from routes.passwords_exploit import router as passwords_exploit_router
 
 from auth import build_server
@@ -17,7 +17,7 @@ app.include_router(passwords_exploit_router)
 async def root():
     return {
         "mensagem": "A02 - Falha Criptográfica (Segura)",
-        "endpoints": ["/change-password", "/exploit-passwords"]
+        "endpoints": ["/change-password-secure", "/exploit-passwords"]
     }
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ router = APIRouter()
 class ChangePasswordRequest(BaseModel):
     new_password: str
 
-@router.post("/change-password")
+@router.post("/change-password-secure")
 async def change_password_secure(request: ChangePasswordRequest, current_user: dict = Depends(get_current_user)):
     # SEGURO: Armazena senha com bcrypt
     password_hash = hash_bcrypt(request.new_password)
@@ -29,9 +29,3 @@ async def change_password_secure(request: ChangePasswordRequest, current_user: d
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuário não encontrado")
     finally:
         conn.close()
-
-#    updated = db.execute_update(query, (password_hash, current_user["username"]))
-#    if updated:
-#        return {"message": "Senha alterada com sucesso (bcrypt)"}
-#    else:
-#        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuário não encontrado")
