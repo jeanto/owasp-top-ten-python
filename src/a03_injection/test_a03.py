@@ -11,6 +11,13 @@ import signal
 import os
 from multiprocessing import Process
 
+import os
+import sys
+
+# Get the correct paths
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+
 # Server URLs
 VULNERABLE_URL = "http://localhost:8003"
 SECURE_URL = "http://localhost:8004"
@@ -25,12 +32,12 @@ class TestA03Injection:
         
         # Start vulnerable server
         cls.vulnerable_process = subprocess.Popen([
-            "python", "server.py"
+            "python3", "server.py"
         ], cwd="src/a03_injection")
         
         # Start secure server
         cls.secure_process = subprocess.Popen([
-            "python", "solution.py"
+            "python3", "solution.py"
         ], cwd="src/a03_injection")
         
         # Wait for servers to start
