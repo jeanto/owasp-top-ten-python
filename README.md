@@ -30,7 +30,7 @@ pip install -r requirements.txt
 
 3. Configure as variáveis de ambiente criando um arquivo `.env`:
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/owasp_workshop
+DATABASE_URL=postgresql://user:password@localhost:5432/owasp_top10_db
 JWT_SECRET=your-secret-key-here
 ```
 
