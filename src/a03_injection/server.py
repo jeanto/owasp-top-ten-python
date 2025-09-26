@@ -4,7 +4,7 @@ Demonstrates SQL Injection vulnerabilities
 """
 
 from fastapi import FastAPI, HTTPException, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 import sqlite3
 import os
 from typing import Dict, Any, Optional
@@ -88,9 +88,17 @@ def init_db():
 async def startup_event():
     init_db()
 
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    index_path = os.path.join(os.path.dirname(__file__), "index.html")
+    return FileResponse(index_path, media_type="text/html")
+
 @app.get("/")
 async def root():
-    return {"message": "A03 - Injection (Vulnerable Implementation)"}
+    return {
+        "mensagem": "A03 - Injection (Implementacao Vulneravel)", 
+        "endpoints": ["/login", "/search", "/users"]
+    }
 
 @app.post("/login")
 async def login(user_data: UserLogin):

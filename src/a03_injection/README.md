@@ -1,199 +1,157 @@
-# A03 - Injection
+# A03 - Injection (SQL Injection)
 
-Este laboratório demonstra vulnerabilidades de **SQL Injection** e como preveni-las.
+Este laboratório demonstra vulnerabilidades de injeção SQL onde dados não validados são inseridos diretamente em consultas SQL, permitindo que atacantes executem comandos maliciosos.
 
-## 🎯 O que você aprenderá
+## 🚨 A Vulnerabilidade
 
-- Como ataques de SQL Injection funcionam
-- Diferentes tipos de injection (login bypass, UNION injection, numeric injection)
-- Como usar consultas parametrizadas para prevenir injection
-- Validação de entrada e sanitização
+**Problema**: O sistema constrói consultas SQL concatenando strings diretamente com entrada do usuário, sem validação ou sanitização adequada.
 
-## 🚨 Vulnerabilidades Demonstradas
+**Exemplo de Exploração**:
+```sql
+-- Consulta vulnerável:
+SELECT * FROM users WHERE username = 'admin' OR '1'='1' --' AND password = 'anything'
 
-### 1. **Login Bypass via SQL Injection**
-```python
-# ❌ VULNERÁVEL
-query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
-
-# Payload malicioso: admin' OR '1'='1' --
-# Query resultante: SELECT * FROM users WHERE username = 'admin' OR '1'='1' --' AND password = 'anything'
+-- A injeção burla a autenticação porque '1'='1' é sempre verdadeiro
 ```
 
-### 2. **UNION Injection para Exfiltração de Dados**
-```python
-# ❌ VULNERÁVEL  
-query += f" AND category = '{category}'"
+## ✅ A Correção
 
-# Payload: electronics' UNION SELECT username, password, email, role, 'injected' FROM users --
-# Extrai dados sensíveis da tabela users
-```
+**Solução**: Usar consultas parametrizadas (prepared statements) que separam dados de comandos SQL:
+1. Usar placeholders (?) ou parâmetros nomeados
+2. Validar e sanitizar entrada do usuário
+3. Implementar controles de acesso adequados
+4. Usar ORMs que protegem automaticamente contra injeção
 
-### 3. **Numeric Injection**
-```python
-# ❌ VULNERÁVEL
-query = f"SELECT * FROM users LIMIT {limit}"
+## 🔧 Pré-requisitos
 
-# Payload: 1; DROP TABLE users; --
-# Pode executar comandos SQL adicionais
-```
-
-## ✅ Correções Implementadas
-
-### 1. **Consultas Parametrizadas**
-```python
-# ✅ SEGURO
-query = "SELECT * FROM users WHERE username = ? AND password = ?"
-cursor.execute(query, (username, password))
-```
-
-### 2. **Validação de Entrada**
-```python
-# ✅ SEGURO
-if not isinstance(limit, int) or limit < 1 or limit > 100:
-    raise HTTPException(status_code=400, detail="Invalid limit parameter")
-```
-
-### 3. **Tratamento de Erros**
-```python
-# ✅ SEGURO - Não expor detalhes do banco
-except Exception as e:
-    raise HTTPException(status_code=500, detail="Database error")
-```
-
-## 🚀 Como executar
-
-### 1. **Instalar dependências**
+### 1. Dependências Python
 ```bash
-cd /home/jean/owasp_top10/owasp-top-ten-python
-pip install -r requirements.txt
+pip install fastapi uvicorn sqlite3 requests pytest
 ```
 
-### 2. **Executar servidor vulnerável**
+### 2. Banco de dados SQLite
+Os bancos de dados SQLite são criados automaticamente quando os servidores são executados:
+- `vulnerable_app.db` - Para servidor vulnerável
+- `secure_app.db` - Para servidor seguro
+
+## 🚀 Como Executar o Laboratório
+
+### 1. Inicie o Servidor de Autenticação (Porta 8000)
+```bash
+cd /caminho/para/projeto
+python3 src/shared/auth_server.py
+```
+
+### 2. Inicie o Servidor Vulnerável (Porta 8003)
 ```bash
 cd src/a03_injection
-python server.py  # Porta 8003
+python3 server.py
 ```
+Acesse: http://localhost:8003
 
-### 3. **Executar servidor seguro**
+### 3. Inicie o Servidor Seguro (Porta 8004)
 ```bash
-python solution.py  # Porta 8004
+cd src/a03_injection
+python3 solution.py
 ```
+Acesse: http://localhost:8004
 
-### 4. **Executar testes**
+## 🧪 Cenários de Teste
+
+### Cenário 1: Bypass de Autenticação via SQL Injection
+**Payload**: Usuário com SQL injection para burlar login
 ```bash
-pytest test_a03.py -v
-```
-
-## 🧪 Testes Manuais
-
-### **Login Bypass (Vulnerável)**
-```bash
-# Tenta login com SQL injection
 curl -X POST http://localhost:8003/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin'\'' OR '\''1'\''='\''1'\'' --", "password": "anything"}'
 ```
+**Resultado**: Login bem-sucedido no servidor vulnerável, falha no seguro.
 
-### **Exfiltração de Dados (Vulnerável)**
+### Cenário 2: UNION Injection para Extrair Dados
+**Payload**: Injeção UNION para revelar dados de usuários via busca de produtos
 ```bash
-# UNION injection para extrair dados de usuários
-curl "http://localhost:8003/search?category=electronics' UNION SELECT id, username, password, email, role FROM users --"
+curl "http://localhost:8003/search?category=electronics'%20UNION%20SELECT%20id,%20username,%20password,%20email,%20role%20FROM%20users%20--%20"
 ```
+**Resultado**: Dados de usuários expostos junto com produtos no servidor vulnerável.
 
-### **Teste Legítimo (Ambos servidores)**
+### Cenário 3: Injeção Numérica
+**Payload**: Tentativa de injeção via parâmetro numérico
 ```bash
-# Login normal
-curl -X POST http://localhost:8003/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "alice", "password": "alice123"}'
-
-# Busca normal
-curl "http://localhost:8003/search?category=electronics"
+curl "http://localhost:8003/users?limit=1; DROP TABLE users; --"
 ```
+**Resultado**: Comando SQL malicioso executado no servidor vulnerável.
 
-### **Verificar Schema do Banco**
+### Cenário 4: Consulta de Schema do Banco (Debug)
+**Endpoint**: Visualizar estrutura do banco de dados
 ```bash
 curl http://localhost:8003/debug/db-schema
 ```
+**Resultado**: Schema do banco exposto (útil para planejar ataques).
 
-## 📊 Estrutura do Banco de Dados
-
-### **Tabela: users**
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | INTEGER | Chave primária |
-| username | TEXT | Nome de usuário |
-| password | TEXT | Senha (texto plano para demonstração) |
-| email | TEXT | Email do usuário |
-| role | TEXT | Papel do usuário (admin/user) |
-
-### **Tabela: products**
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| id | INTEGER | Chave primária |
-| name | TEXT | Nome do produto |
-| category | TEXT | Categoria |
-| price | REAL | Preço |
-| description | TEXT | Descrição |
-
-## 🎓 Dados de Teste
-
-### **Usuários**
-- `admin` / `admin123` (role: admin)
-- `alice` / `alice123` (role: user)
-- `bob` / `bob456` (role: user)
-- `charlie` / `charlie789` (role: user)
-
-### **Produtos**
-- Laptop (electronics) - $999.99
-- Phone (electronics) - $599.99
-- Book (books) - $29.99
-- Headphones (electronics) - $199.99
-- Tablet (electronics) - $399.99
-
-## ⚠️ Payloads de Teste
-
-### **Login Bypass**
-```
-Username: admin' OR '1'='1' --
-Password: qualquer_coisa
+### Cenário 5: Comparação - Funcionalidade Legítima
+**Login legítimo** funcionando em ambos os servidores:
+```bash
+curl -X POST http://localhost:8003/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice", "password": "alice123"}'
 ```
 
-### **UNION Injection**
-```
-Category: electronics' UNION SELECT id, username, password, email, role FROM users --
-```
-
-### **Numeric Injection**
-```
-Limit: 1; INSERT INTO users (username, password) VALUES ('hacker', 'pwned'); --
+**Busca legítima** funcionando em ambos os servidores:
+```bash
+curl "http://localhost:8003/search?category=electronics"
 ```
 
-## 🔍 Análise dos Resultados
+## 🧪 Testes Automatizados
 
-### **Servidor Vulnerável (8003)**
-- ✅ Aceita payloads maliciosos
-- ✅ Expõe consultas SQL executadas
-- ✅ Permite bypass de autenticação
-- ✅ Permite exfiltração de dados
+Execute os testes unitários que validam as vulnerabilidades e correções:
+```bash
+cd src/a03_injection
+pytest test_a03.py -v -s
+```
 
-### **Servidor Seguro (8004)**
-- ❌ Bloqueia tentativas de injection
-- ❌ Usa consultas parametrizadas
-- ❌ Valida tipos de entrada
-- ❌ Não expõe detalhes internos
+### Testes Incluídos
+- ✅ `test_vulnerable_sql_injection_login_bypass` - Confirma bypass de autenticação via SQL injection
+- ✅ `test_secure_blocks_sql_injection_login` - Verifica bloqueio no servidor seguro
+- ✅ `test_vulnerable_union_injection_search` - Confirma UNION injection para extrair dados
+- ✅ `test_secure_blocks_union_injection_search` - Verifica proteção contra UNION injection
+- ✅ `test_vulnerable_numeric_injection_users` - Testa injeção via parâmetros numéricos
+- ✅ `test_secure_validates_numeric_input` - Verifica validação de entrada numérica
+- ✅ `test_legitimate_login_works_on_both_servers` - Garante funcionalidade legítima
+- ✅ `test_legitimate_search_works_on_both_servers` - Garante busca legítima funcional
+- ✅ `test_database_schema_endpoint` - Testa endpoint de debug do schema
 
-## 📚 Recursos Adicionais
 
-- [OWASP SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)
-- [SQLite Documentation](https://sqlite.org/docs.html)
+## 🛡️ Lições de Segurança
+
+### O que NÃO fazer:
+- ❌ Concatenar strings para formar SQL
+- ❌ Confiar na validação apenas no frontend
+- ❌ Usar entrada do usuário diretamente em consultas
+- ❌ Expor informações de erro detalhadas
+
+### O que fazer:
+- ✅ Usar consultas parametrizadas sempre
+- ✅ Validar entrada no backend
+- ✅ Implementar princípio do menor privilégio
+- ✅ Usar ORMs com proteção integrada
+- ✅ Sanitizar saídas de erro
+
+## 🔗 Links Úteis
+
+- [OWASP SQL Injection](https://owasp.org/www-community/attacks/SQL_Injection)
+- [SQL Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html)
 - [FastAPI Security Tutorial](https://fastapi.tiangolo.com/tutorial/security/)
 
-## 🏆 Desafios Extras
+## 🐛 Troubleshooting
 
-1. **Implementar prepared statements** em diferentes cenários
-2. **Criar um WAF simples** para detectar payloads de injection
-3. **Implementar logging** para detectar tentativas de ataque
-4. **Testar com diferentes bancos** (PostgreSQL, MySQL)
-5. **Implementar rate limiting** para ataques automatizados
+### Erro: "No such file or directory: server.py"
+**Solução**: Certifique-se de estar no diretório correto (`src/a03_injection`)
+
+### Erro: "Address already in use"
+**Solução**: Pare processos nas portas 8003/8004 com `pkill -f "python.*server.py"`
+
+### Erro: "Connection refused"
+**Solução**: Aguarde alguns segundos após iniciar os servidores antes de executar testes
+
+### Erro: "Database is locked"
+**Solução**: Remova arquivos `.db` e reinicie os servidores

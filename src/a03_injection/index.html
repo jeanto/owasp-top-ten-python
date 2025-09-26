@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OWASP Top 10 - A03: Injection (SQL Injection)</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Roboto', Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 0; }
+    .container { max-width: 900px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px; }
+    h1, h2, h3 { color: #2d3e50; }
+    h1 { margin-top: 0; }
+    code, pre { background: #f0f0f0; border-radius: 4px; padding: 2px 6px; font-size: 1em; }
+    pre { padding: 12px; overflow-x: auto; }
+    .owasp-box { background: #e3f2fd; border-left: 5px solid #1976d2; padding: 16px; margin-bottom: 24px; }
+    .tutorial-step { margin-bottom: 18px; }
+    .tip { background: #fffde7; border-left: 5px solid #ffd600; padding: 12px; margin: 18px 0; }
+    .danger { background: #ffebee; border-left: 5px solid #f44336; padding: 12px; margin: 18px 0; }
+    ul { margin-top: 0; }
+    @media (max-width: 600px) { .container { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>OWASP Top 10 - A03: Injection (SQL Injection)</h1>
+    <div class="owasp-box">
+      <h2>O que é SQL Injection?</h2>
+      <p><strong>SQL Injection</strong> é uma das vulnerabilidades de segurança mais críticas listadas pelo <a href="https://owasp.org/Top10/A03_2021-Injection/" target="_blank">OWASP Top 10</a>. Ela ocorre quando dados não confiáveis são inseridos diretamente em consultas SQL, permitindo que atacantes executem comandos maliciosos no banco de dados.</p>
+      <ul>
+        <li>Atacantes podem burlar autenticação inserindo códigos SQL maliciosos</li>
+        <li>Possibilita acesso, modificação ou exclusão de dados sensíveis</li>
+        <li>Pode levar ao comprometimento completo do banco de dados</li>
+      </ul>
+      <p><strong>Impacto:</strong> Vazamento de dados, bypass de autenticação, modificação/exclusão de dados, execução de comandos no servidor.</p>
+    </div>
+
+    <h2>Laboratório Prático</h2>
+    <p>Neste laboratório, você irá explorar e corrigir vulnerabilidades de SQL Injection em uma aplicação Python com SQLite.</p>
+
+    <h3>Passo a Passo</h3>
+    <div class="tutorial-step">
+      <strong>1. Pré-requisitos</strong>
+      <ul>
+        <li>Dependências instaladas: <code>pip install fastapi uvicorn sqlite3 requests pytest</code></li>
+        <li>Os bancos SQLite são criados automaticamente ao executar os servidores</li>
+      </ul>
+    </div>
+
+    <div class="tutorial-step">
+      <strong>2. Inicie os servidores</strong>
+      <ul>
+        <li>Servidor de autenticação (porta 8000): <code>python3 src/shared/auth_server.py</code></li>
+        <li>Servidor vulnerável (porta 8003): <code>python3 src/a03_injection/server.py</code></li>
+        <li>Servidor seguro (porta 8004): <code>python3 src/a03_injection/solution.py</code></li>
+      </ul>
+    </div>
+
+    <div class="tutorial-step">
+      <strong>3. Cenário 1: Bypass de Autenticação</strong>
+      <p>Teste como um atacante pode burlar o login usando SQL injection:</p>
+      <pre><code>curl -X POST http://localhost:8003/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin'\'' OR '\''1'\''='\''1'\'' --", "password": "anything"}'</code></pre>
+      <div class="danger">
+        <strong>Vulnerabilidade:</strong> O servidor vulnerável aceita este login malicioso, enquanto o servidor seguro o rejeita.
+      </div>
+    </div>
+
+    <div class="tutorial-step">
+      <strong>4. Cenário 2: Extração de Dados (UNION Injection)</strong>
+      <p>Explore como extrair dados de usuários através da busca de produtos:</p>
+      <pre><code>curl "http://localhost:8003/search?category=electronics'\'' UNION SELECT id, username, password, email, role FROM users --"</code></pre>
+      <div class="danger">
+        <strong>Vulnerabilidade:</strong> O servidor vulnerável retorna dados de usuários junto com os produtos.
+      </div>
+    </div>
+
+    <div class="tutorial-step">
+      <strong>5. Cenário 3: Injeção Numérica</strong>
+      <p>Teste injeção via parâmetros numéricos:</p>
+      <pre><code>curl "http://localhost:8003/users?limit=1; DROP TABLE users; --"</code></pre>
+      <div class="danger">
+        <strong>Vulnerabilidade:</strong> Comandos SQL maliciosos podem ser executados.
+      </div>
+    </div>
+
+    <div class="tutorial-step">
+      <strong>6. Debugging: Visualizar Schema do Banco</strong>
+      <p>Veja a estrutura do banco (útil para planejar ataques):</p>
+      <pre><code>curl http://localhost:8003/debug/db-schema</code></pre>
+    </div>
+
+    <div class="tutorial-step">
+      <strong>7. Compare com o Servidor Seguro</strong>
+      <p>Execute os mesmos payloads no servidor seguro (porta 8004) e observe as diferenças:</p>
+      <ul>
+        <li>Login legítimo funciona: <code>{"username": "alice", "password": "alice123"}</code></li>
+        <li>Ataques são bloqueados e retornam erro 400 ou 403</li>
+        <li>Consultas usam prepared statements (parâmetros seguros)</li>
+      </ul>
+    </div>
+
+    <h3>Testes Automatizados</h3>
+    <div class="tutorial-step">
+      <p>Execute todos os testes de uma vez:</p>
+      <pre><code>cd src/a03_injection
+pytest test_a03.py -v -s</code></pre>
+      <div class="tip">
+        <strong>Dica:</strong> Os testes iniciam automaticamente os servidores e executam todos os cenários de ataque e defesa.
+      </div>
+    </div>
+
+    <h3>Usuários de Teste</h3>
+    <ul>
+      <li><strong>alice</strong> / senha: <code>alice123</code></li>
+      <li><strong>bob</strong> / senha: <code>bob123</code></li>
+      <li><strong>admin</strong> / senha: <code>admin123</code></li>
+    </ul>
+
+    <h3>Principais Lições de Segurança</h3>
+    <h4>❌ O que NÃO fazer:</h4>
+    <ul>
+      <li>Concatenar strings para formar consultas SQL</li>
+      <li>Confiar na validação apenas no frontend</li>
+      <li>Usar entrada do usuário diretamente em consultas</li>
+      <li>Expor detalhes de erro para usuários finais</li>
+    </ul>
+
+    <h4>✅ O que fazer:</h4>
+    <ul>
+      <li>Usar sempre consultas parametrizadas (prepared statements)</li>
+      <li>Validar e sanitizar entrada no backend</li>
+      <li>Implementar princípio do menor privilégio</li>
+      <li>Usar ORMs com proteção integrada contra SQL injection</li>
+      <li>Implementar logging e monitoramento de tentativas de ataque</li>
+    </ul>
+
+    <h3>Links Úteis</h3>
+    <ul>
+      <li><a href="https://owasp.org/Top10/A03_2021-Injection/" target="_blank">OWASP Top 10 - Injection</a></li>
+      <li><a href="https://owasp.org/www-community/attacks/SQL_Injection" target="_blank">OWASP SQL Injection Guide</a></li>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" target="_blank">SQL Injection Prevention Cheat Sheet</a></li>
+      <li><a href="https://fastapi.tiangolo.com/tutorial/security/" target="_blank">FastAPI Security Tutorial</a></li>
+    </ul>
+  </div>
+</body>
+</html>

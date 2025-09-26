@@ -1,8 +1,3 @@
-"""
-A03 - Injection Tests
-Tests for SQL Injection vulnerabilities and their fixes
-"""
-
 import pytest
 import requests
 import time
@@ -14,11 +9,11 @@ from multiprocessing import Process
 import os
 import sys
 
-# Get the correct paths
+# Obtenha os caminhos corretos
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
 
-# Server URLs
+# URLs dos servidores
 VULNERABLE_URL = "http://localhost:8003"
 SECURE_URL = "http://localhost:8004"
 
@@ -26,26 +21,26 @@ class TestA03Injection:
     
     @classmethod
     def setup_class(cls):
-        """Start both servers for testing"""
+        """Inicia ambos os servidores para teste"""
         cls.vulnerable_process = None
         cls.secure_process = None
         
-        # Start vulnerable server
+        # Inicia o servidor vulnerável
         cls.vulnerable_process = subprocess.Popen([
             "python3", "server.py"
         ], cwd="src/a03_injection")
         
-        # Start secure server
+        # Inicia o servidor seguro
         cls.secure_process = subprocess.Popen([
             "python3", "solution.py"
         ], cwd="src/a03_injection")
         
-        # Wait for servers to start
+        # Aguarda os servidores iniciarem
         time.sleep(3)
     
     @classmethod
     def teardown_class(cls):
-        """Stop both servers after testing"""
+        """Encerra ambos os servidores após os testes"""
         if cls.vulnerable_process:
             cls.vulnerable_process.terminate()
             cls.vulnerable_process.wait()
@@ -54,14 +49,15 @@ class TestA03Injection:
             cls.secure_process.terminate()
             cls.secure_process.wait()
         
-        # Clean up database files
+        # Remove arquivos de banco de dados
         for db_file in ["vulnerable_app.db", "secure_app.db"]:
             if os.path.exists(db_file):
                 os.remove(db_file)
 
+    # Testa a vulnerabilidade de injeção de SQL no
+    # endpoint de login de um servidor vulnerável.
     def test_vulnerable_sql_injection_login_bypass(self):
-        """Test SQL injection in login endpoint (vulnerable server)"""
-        # SQL injection payload to bypass authentication
+        # Payload de SQL injection para burlar autenticação
         payload = {
             "username": "admin' OR '1'='1' --",
             "password": "anything"
@@ -69,18 +65,18 @@ class TestA03Injection:
         
         response = requests.post(f"{VULNERABLE_URL}/login", json=payload)
         
-        # Should succeed due to SQL injection vulnerability
+        # Deve ser bem-sucedido devido à vulnerabilidade de SQL injection
         assert response.status_code == 200
         data = response.json()
         assert data["success"] == True
         assert "admin" in data["user"]["username"]
         
-        # Check that the vulnerable query was executed
+        # Verifica se a consulta vulnerável foi executada
         assert "OR '1'='1'" in data["query_executed"]
 
+    """Testa se o servidor seguro bloqueia SQL injection no login"""
     def test_secure_blocks_sql_injection_login(self):
-        """Test that secure server blocks SQL injection in login"""
-        # Same SQL injection payload
+        # Mesmo payload de SQL injection
         payload = {
             "username": "admin' OR '1'='1' --",
             "password": "anything"
@@ -88,99 +84,99 @@ class TestA03Injection:
         
         response = requests.post(f"{SECURE_URL}/login", json=payload)
         
-        # Should fail - no user with that exact username
+        # Deve falhar - não existe usuário com esse nome exato
         assert response.status_code == 401
         assert "Invalid credentials" in response.json()["detail"]
 
+    """Testa UNION SQL injection no endpoint de busca (servidor vulnerável)"""
     def test_vulnerable_union_injection_search(self):
-        """Test UNION SQL injection in search endpoint (vulnerable server)"""
-        # UNION injection to extract user data
+        # Injeção UNION para extrair dados de usuários
         injection_payload = "electronics' UNION SELECT id, username, password, email, role FROM users --"
         
         response = requests.get(f"{VULNERABLE_URL}/search", params={"category": injection_payload})
         
-        # Should succeed and potentially expose user data
+        # Deve ser bem-sucedido e potencialmente expor dados de usuários
         assert response.status_code == 200
         data = response.json()
         
-        # Check if injection was executed
+        # Verifica se a injeção foi executada
         assert "UNION SELECT" in data["query_executed"]
         
-        # Check if we got user data in products response
+        # Verifica se recebemos dados de usuários na resposta de produtos
         products = data.get("products", [])
-        # Look for usernames in the "name" field (due to UNION structure)
+        # Procura por nomes de usuários no campo "name" (devido à estrutura do UNION)
         usernames_found = any("admin" in str(product.get("name", "")) for product in products)
         
-        # The injection should reveal sensitive data
+        # A injeção deve revelar dados sensíveis
         assert len(products) > 0
 
     def test_secure_blocks_union_injection_search(self):
-        """Test that secure server blocks UNION injection in search"""
-        # Same UNION injection payload
+        """Testa se o servidor seguro bloqueia UNION injection na busca"""
+        # Mesmo payload de UNION injection
         injection_payload = "electronics' UNION SELECT id, username, password, email, role FROM users --"
         
         response = requests.get(f"{SECURE_URL}/search", params={"category": injection_payload})
         
-        # Should return normal results (parameterized query treats payload as literal string)
+        # Deve retornar resultados normais (consulta parametrizada trata o payload como string literal)
         assert response.status_code == 200
         data = response.json()
         
-        # Should not find any products with that exact category name
+        # Não deve encontrar produtos com esse nome exato de categoria
         assert len(data["products"]) == 0
 
     def test_vulnerable_numeric_injection_users(self):
-        """Test numeric SQL injection in users endpoint (vulnerable server)"""
-        # Injection in numeric parameter
+        """Testa injeção SQL numérica no endpoint de usuários (servidor vulnerável)"""
+        # Injeção em parâmetro numérico
         injection_payload = "1; DROP TABLE users; --"
         
         response = requests.get(f"{VULNERABLE_URL}/users", params={"limit": injection_payload})
         
-        # Might return error due to malformed SQL, but injection attempt is made
+        # Pode retornar erro devido à SQL malformada, mas a tentativa de injeção é feita
         data = response.json()
         
-        # Check that the injection was attempted
+        # Verifica se a injeção foi tentada
         if "query_executed" in data:
             assert "DROP TABLE" in data["query_executed"]
 
     def test_secure_validates_numeric_input(self):
-        """Test that secure server validates numeric input"""
-        # Invalid numeric input
+        """Testa se o servidor seguro valida entrada numérica"""
+        # Entrada numérica inválida
         response = requests.get(f"{SECURE_URL}/users", params={"limit": "invalid"})
         
-        # Should return validation error
-        assert response.status_code == 422  # FastAPI validation error
+        # Deve retornar erro de validação
+        assert response.status_code == 422  # Erro de validação do FastAPI
 
     def test_legitimate_login_works_on_both_servers(self):
-        """Test that legitimate login works on both servers"""
+        """Testa se login legítimo funciona em ambos os servidores"""
         legitimate_payload = {
             "username": "alice",
             "password": "alice123"
         }
         
-        # Test vulnerable server
+        # Testa servidor vulnerável
         response_vuln = requests.post(f"{VULNERABLE_URL}/login", json=legitimate_payload)
         assert response_vuln.status_code == 200
         assert response_vuln.json()["user"]["username"] == "alice"
         
-        # Test secure server
+        # Testa servidor seguro
         response_secure = requests.post(f"{SECURE_URL}/login", json=legitimate_payload)
         assert response_secure.status_code == 200
         assert response_secure.json()["user"]["username"] == "alice"
 
     def test_legitimate_search_works_on_both_servers(self):
-        """Test that legitimate search works on both servers"""
-        # Test vulnerable server
+        """Testa se busca legítima funciona em ambos os servidores"""
+        # Testa servidor vulnerável
         response_vuln = requests.get(f"{VULNERABLE_URL}/search", params={"category": "electronics"})
         assert response_vuln.status_code == 200
         assert len(response_vuln.json()["products"]) > 0
         
-        # Test secure server
+        # Testa servidor seguro
         response_secure = requests.get(f"{SECURE_URL}/search", params={"category": "electronics"})
         assert response_secure.status_code == 200
         assert len(response_secure.json()["products"]) > 0
 
     def test_database_schema_endpoint(self):
-        """Test database schema debug endpoint"""
+        """Testa o endpoint de debug do esquema do banco de dados"""
         response = requests.get(f"{VULNERABLE_URL}/debug/db-schema")
         assert response.status_code == 200
         
@@ -188,7 +184,7 @@ class TestA03Injection:
         assert "users" in schema
         assert "products" in schema
         
-        # Check that users table has expected columns
+        # Verifica se a tabela users possui as colunas esperadas
         user_columns = [col["name"] for col in schema["users"]]
         assert "username" in user_columns
         assert "password" in user_columns
